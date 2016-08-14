@@ -85,6 +85,55 @@ ftssをコンパイルしなおす。
 
 ここで改めてftssを確認。どうやらOS標準のaprライブラリをリンクしてしまっている。ここのAPI不整合の被疑。
 
+	[root@libra ftss-0.9.3]# ldd ./src/ftss
+	        linux-vdso.so.1 =>  (0x00007fff87d5e000)
+	        libapr-1.so.0 => /usr/lib64/libapr-1.so.0 (0x00007fa854ed0000)
+	        libpthread.so.0 => /lib64/libpthread.so.0 (0x000000341c800000)
+	        libc.so.6 => /lib64/libc.so.6 (0x000000341c400000)
+	        libuuid.so.1 => /lib64/libuuid.so.1 (0x000000341fc00000)
+	        libcrypt.so.1 => /lib64/libcrypt.so.1 (0x0000003421800000)
+	        /lib64/ld-linux-x86-64.so.2 (0x000000341c000000)
+	        libfreebl3.so => /lib64/libfreebl3.so (0x0000003421400000)
+	        libdl.so.2 => /lib64/libdl.so.2 (0x000000341cc00000)
+
+というわけで、LD_LIBRARY_PATHでライブラリ強制変更。
+
+	[root@libra ftss-0.9.3]# export LD_LIBRARY_PATH=/usr/local/apache2.2.31/lib
+	[root@libra ftss-0.9.3]# ldd ./src/ftss
+	        linux-vdso.so.1 =>  (0x00007ffe299fa000)
+	        libapr-1.so.0 => /usr/local/apache2.2.31/lib/libapr-1.so.0 (0x00007f4e173ab000)
+	        libpthread.so.0 => /lib64/libpthread.so.0 (0x000000341c800000)
+	        libc.so.6 => /lib64/libc.so.6 (0x000000341c400000)
+	        librt.so.1 => /lib64/librt.so.1 (0x000000341d000000)
+	        libcrypt.so.1 => /lib64/libcrypt.so.1 (0x0000003421800000)
+	        /lib64/ld-linux-x86-64.so.2 (0x000000341c000000)
+	        libfreebl3.so => /lib64/libfreebl3.so (0x0000003421400000)
+	        libdl.so.2 => /lib64/libdl.so.2 (0x000000341cc00000)
+
+これなら動く。
+
+	[root@libra ftss-0.9.3]# ./src/ftss /usr/local/apache2.2.31/logs/apache_status
+	29868   _       localhost       localhost       GET /server-status HTTP/1.1
+	29869   _
+	29870   _       ::1     localhost       GET /
+	29871   _       localhost       localhost       GET /server-status HTTP/1.1
+	29872   _       localhost       localhost       GET /server-status HTTP/1.1
+	29879   _
+
+・・・あれ。ちょっと見た目が違う。でもabで負荷をかけるとちゃんとステータスは変わる模様。
+
+	[root@libra ftss-0.9.3]# ftss /usr/local/apache2.2.31/logs/apache_status
+	29868   C       ::1     localhost       GET / HTTP/1.0
+	29869   _       ::1     localhost       GET / HTTP/1.0
+	29870   _       ::1     localhost       GET / HTTP/1.0
+	29871   _       ::1     localhost       GET / HTTP/1.0
+	29872   _       ::1     localhost       GET / HTTP/1.0
+	29879   W       ::1     localhost       GET / HTTP/1.0
+
+というわけで、単純な環境問題で動かないこともある。
+
+
+
 
 
 
